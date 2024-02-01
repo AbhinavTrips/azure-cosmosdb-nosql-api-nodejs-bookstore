@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.4.1.14562",
-      "templateHash": "67786124345066191"
+      "templateHash": "13701948159885019128"
     }
   },
   "parameters": {
@@ -15,13 +15,6 @@
       "maxLength": 30,
       "metadata": {
         "description": "CosmosBookstore"
-      }
-    },
-    "location": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "metadata": {
-        "description": "Location for all resources."
       }
     },
     "appServicePlanTier": {
@@ -56,7 +49,7 @@
     },
     "repositoryUrl": {
       "type": "string",
-      "defaultValue": "https://github.com/nayakshweta/CosmosBookstore.git",
+      "defaultValue": " https://github.com/AbhinavTrips/azure-cosmosdb-nosql-api-nodejs-bookstore.git",
       "metadata": {
         "description": ""
       }
@@ -68,37 +61,39 @@
         "description": "The branch of the GitHub repository to use."
       }
     },
-    "serverVersion": {
+    "accountName": {
       "type": "string",
-      "defaultValue": "4.0",
-      "allowedValues": [
-        "3.2",
-        "3.6",
-        "4.0"
-      ],
+      "defaultValue": "[format('sql-{0}', uniqueString(resourceGroup().id))]",
       "metadata": {
-        "description": "Specifies the MongoDB server version to use."
+        "description": "Azure Cosmos DB account name, max length 44 characters"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for the Azure Cosmos DB account."
       }
     },
     "databaseName": {
       "type": "string",
       "defaultValue": "cosmosbookstore",
       "metadata": {
-        "description": "The name for the Mongo DB database"
+        "description": "The name for the NoSQL API database"
       }
     },
     "collection1Name": {
       "type": "string",
       "defaultValue": "books",
       "metadata": {
-        "description": "The name for the first Mongo DB collection"
+        "description": "The name for the first container"
       }
     },
     "collection2Name": {
       "type": "string",
       "defaultValue": "genres",
       "metadata": {
-        "description": "The name for the second Mongo DB collection"
+        "description": "The name for the second container"
       }
     },
     "throughput": {
@@ -107,11 +102,10 @@
       "maxValue": 1000000,
       "minValue": 400,
       "metadata": {
-        "description": "The shared throughput for the Mongo DB database"
+        "description": "The shared throughput for the NoSQL database"
       }
     }
   },
-  "functions": [],
   "variables": {
     "linuxFxVersion": "NODE|14-lts",
     "cosmosAccountName": "[toLower(parameters('applicationName'))]",
@@ -122,10 +116,10 @@
   "resources": [
     {
       "type": "Microsoft.DocumentDB/databaseAccounts",
-      "apiVersion": "2021-04-15",
-      "name": "[variables('cosmosAccountName')]",
-      "kind": "MongoDB",
+      "apiVersion": "2022-05-15",
+      "name": "[toLower(parameters('accountName'))]",
       "location": "[parameters('location')]",
+      "kind": "GlobalDocumentDB",
       "properties": {
         "consistencyPolicy": {
           "defaultConsistencyLevel": "Session"
@@ -137,86 +131,64 @@
             "isZoneRedundant": false
           }
         ],
-        "databaseAccountOfferType": "Standard",
-        "apiProperties": {
-          "serverVersion": "[parameters('serverVersion')]"
-        }
+        "databaseAccountOfferType": "Standard"
       }
     },
     {
-      "type": "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
-      "apiVersion": "2021-04-15",
-      "name": "[format('{0}/{1}', variables('cosmosAccountName'), parameters('databaseName'))]",
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+      "apiVersion": "2022-05-15",
+      "name": "[format('{0}/{1}', toLower(parameters('accountName')), parameters('databaseName'))]",
       "properties": {
         "resource": {
           "id": "[parameters('databaseName')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', toLower(parameters('accountName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+      "apiVersion": "2022-05-15",
+      "name": "[format('{0}/{1}', format('{0}/{1}', toLower(parameters('accountName')), parameters('databaseName')), parameters('container1Name'))]",
+      "properties": {
+        "resource": {
+          "id": "[parameters('container1Name')]",
+          "partitionKey": {
+            "paths": [
+              "/_id"
+            ],
+            "kind": "Hash"
+          }
         },
         "options": {
           "throughput": "[parameters('throughput')]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosAccountName'))]"
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', split(format('{0}/{1}', toLower(parameters('accountName')), parameters('databaseName')), '/')[0], split(format('{0}/{1}', toLower(parameters('accountName')), parameters('databaseName')), '/')[1])]"
       ]
     },
     {
-      "type": "Microsoft.DocumentDb/databaseAccounts/mongodbDatabases/collections",
-      "apiVersion": "2021-04-15",
-      "name": "[format('{0}/{1}/{2}', variables('cosmosAccountName'), parameters('databaseName'), parameters('collection1Name'))]",
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+      "apiVersion": "2022-05-15",
+      "name": "[format('{0}/{1}', format('{0}/{1}', toLower(parameters('accountName')), parameters('databaseName')), parameters('container2Name'))]",
       "properties": {
         "resource": {
-          "id": "[parameters('collection1Name')]",
-          "indexes": [
-            {
-              "key": {
-                "keys": [
-                  "_id"
-                ]
-              }
-            },
-            {
-              "key": {
-                "keys": [
-                  "rating"
-                ]
-              }
-            }
-          ]
+          "id": "[parameters('container2Name')]",
+          "partitionKey": {
+            "paths": [
+              "/_id"
+            ],
+            "kind": "Hash"
+          }
+        },
+        "options": {
+          "throughput": "[parameters('throughput')]"
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', variables('cosmosAccountName'), parameters('databaseName'))]",
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosAccountName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.DocumentDb/databaseAccounts/mongodbDatabases/collections",
-      "apiVersion": "2021-04-15",
-      "name": "[format('{0}/{1}/{2}', variables('cosmosAccountName'), parameters('databaseName'), parameters('collection2Name'))]",
-      "properties": {
-        "resource": {
-          "id": "[parameters('collection2Name')]",
-          "indexes": [
-            {
-              "key": {
-                "keys": [
-                  "_id"
-                ]
-              }
-            },
-            {
-              "key": {
-                "keys": [
-                  "$**"
-                ]
-              }
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', variables('cosmosAccountName'), parameters('databaseName'))]",
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosAccountName'))]"
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', split(format('{0}/{1}', toLower(parameters('accountName')), parameters('databaseName')), '/')[0], split(format('{0}/{1}', toLower(parameters('accountName')), parameters('databaseName')), '/')[1])]"
       ]
     },
     {
@@ -249,7 +221,6 @@
       "dependsOn": [
         "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosAccountName'))]",
         "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
-
       ],
       "resources": [
         {
@@ -265,9 +236,9 @@
             "LOG_LEVEL": "log",
             "LOG_ENABLED": true,
             "COSMOS_BOOKSTORE_DB_CONNECTION_STRING": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', toLower(parameters('applicationName'))), '2019-12-12').connectionStrings[0].connectionString]",
-            "SEARCH_API_KEY":"",
-            "SEARCH_API_ENDPOINT":"",
-            "SEARCH_INDEX_NAME":"",
+            "SEARCH_API_KEY": "",
+            "SEARCH_API_ENDPOINT": "",
+            "SEARCH_INDEX_NAME": "",
             "NODE_ENV": "production"
           }
         },
