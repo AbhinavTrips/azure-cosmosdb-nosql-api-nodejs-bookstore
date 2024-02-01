@@ -25,7 +25,7 @@ Follow the steps below to deploy the app with minimal effort and begin experimen
 The template below deploys the application into an Azure App Service instance and creates an Azure Cosmos DB account.
 Simply enter the Resource Group name in this template to deploy the resources.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fabhinavtrips%2FCosmosBookstore%2Fmaster%2Fdeployment%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fabhinavtrips%2Fazure-cosmosdb-nosql-api-nodejs-bookstore%2Fmaster%2Fdeployment%2Fazuredeploy.json)
 
 ### Import the sample dataset into the Azure Cosmos DB API for MongoDB account
 
